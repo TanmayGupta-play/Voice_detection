@@ -63,3 +63,8 @@ htmlcov/
 # 🧱 OS-specific
 .DS_Store
 Thumbs.db
+
+# Vosk and Whisper models
+models/
+vosk-model*
+whisper-model*

@@ -7,9 +7,9 @@ import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 
 # === CONFIGURATION ===
-TRIGGER_WORD = "command"  # Change this to your desired trigger word
+TRIGGER_WORD = "system"  # Change this to your desired trigger word
 SAMPLE_RATE = 16000
-MODEL_PATH = "models/vosk-model-small-en-us-0.15"
+MODEL_PATH = "models/vosk-model-en-us-0.22-lgraph"
 
 # === LOAD MODEL ===
 if not os.path.exists(MODEL_PATH):
