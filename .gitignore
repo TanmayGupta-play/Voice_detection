@@ -1,0 +1,64 @@
+# 🚫 Ignore Python cache and compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# 🚫 Ignore environment folders
+myenv/
+env/
+venv/
+*.egg-info/
+.env
+.env.*
+
+# 🚫 Ignore Whisper model checkpoints or downloads (if added later)
+whisper_cache/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+
+# 🚫 Ignore temp and live audio recordings
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.webm
+*.ogg
+*.opus
+*.pcm
+*.npy
+*.jsonl
+*.log
+*.temp
+*.tmp
+temp*
+
+# 🚫 Ignore user-generated or test output
+output/
+logs/
+log/
+*.log
+
+# 🚫 Ignore dataset folders if not needed in repo
+data/raw/
+data/augmented/
+data/input/
+data/output/
+
+# 🛠 Ignore VSCode and editor settings
+.vscode/
+*.code-workspace
+
+# 🧪 Ignore test artifacts
+*.pytest_cache/
+coverage/
+htmlcov/
+*.cover
+*.coverage
+
+# 🧱 OS-specific
+.DS_Store
+Thumbs.db
