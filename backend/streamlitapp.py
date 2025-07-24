@@ -5,11 +5,8 @@ import queue
 import time
 from streamlit.runtime.scriptrunner import add_script_run_ctx
 from streamlit_autorefresh import st_autorefresh
-import requests
 
 st.set_page_config(page_title="Cockpit Assistant", layout="wide")
-st.title("Cockpit Voice Command System")
-st.markdown("Press start to activate the assistant.")
 
 # Add a Back button to the top left corner
 st.markdown(
@@ -19,7 +16,7 @@ st.markdown(
         position: fixed;
         top: 10px;
         left: 10px;
-        z-index: 2147483647 !important;  /* Maximum z-index with !important */
+        z-index: 2147483647 !important;
     }
     </style>
     <div class="back-btn-container">
@@ -30,6 +27,9 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+st.title("Cockpit Voice Command System")
+st.markdown("Press start to activate the assistant.")
 
 WEBSOCKET_URL = "ws://localhost:8000/ws"
 
@@ -44,6 +44,10 @@ if "message_history" not in st.session_state:
     st.session_state.message_history = []
 if "ws_connected" not in st.session_state:
     st.session_state.ws_connected = False
+if "listening" not in st.session_state:
+    st.session_state.listening = False
+
+# WebSocket callbacks
 
 def on_message(ws, message):
     print("[WS Message]", message)
@@ -65,6 +69,7 @@ def on_close(ws, code, msg):
     st.session_state.ws_connected = False
 
 def start_ws_client():
+    print("[DEBUG] WebSocket client thread started")
     ws = WebSocketApp(
         WEBSOCKET_URL,
         on_message=on_message,
@@ -73,12 +78,9 @@ def start_ws_client():
         on_close=on_close
     )
     ws.run_forever()
+    print("[DEBUG] WebSocket client thread exiting")
 
-# === Start/Restart Button ===
-if "listening" not in st.session_state:
-    st.session_state.listening = False
-
-# Only show Start Listening button if not already listening
+# === Start Listening Button ===
 if not st.session_state.listening:
     if st.button("Start Listening"):
         st.session_state.listening = True
@@ -116,7 +118,6 @@ def speak_text(text):
         """
         st.components.v1.html(speak_js, height=0)
 
-# === Poll for New Messages (Streamlit Timer) ===
 last_spoken = st.session_state.get("last_spoken", None)
 
 def poll_messages():
@@ -124,9 +125,9 @@ def poll_messages():
     while not st.session_state.message_queue.empty():
         new_messages.append(st.session_state.message_queue.get())
     if new_messages:
+        print(f"[DEBUG] New messages: {new_messages}")
         st.session_state.messages.extend(new_messages)
         st.session_state.message_history.extend(new_messages)
-        print(f"[DEBUG] New messages: {new_messages}")
     with output_box.container():
         for msg in st.session_state.message_history[-30:]:
             st.write(msg)
@@ -139,15 +140,4 @@ def poll_messages():
 
 # This will refresh the app every 1000 ms (1 second)
 st_autorefresh(interval=1000, key="message_poll")
-
-def backend_is_up():
-    try:
-        # Use the correct URL for your backend (change if not localhost)
-        r = requests.get("http://localhost:8000/docs", timeout=1)
-        return r.status_code == 200
-    except Exception:
-        return False
-
-if not backend_is_up():
-    st.error("Backend is not running! Please restart the backend server (e.g., run 'uvicorn backend.app:app --reload').")
-    st.stop()
+poll_messages()
