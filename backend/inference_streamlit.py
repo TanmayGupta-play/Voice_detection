@@ -14,6 +14,8 @@ import wave
 import time
 import asyncio
 import string
+import streamlit as st
+import threading
 
 # Load commands
 base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -159,3 +161,54 @@ async def main_loop_websocket(websocket):
         await websocket.send_text(f"Error: {str(e)}")
         stream.stop_stream()
         stream.close()
+
+def main():
+    st.title("Voice Command Interface")
+
+    if "ws_thread" not in st.session_state:
+        st.session_state.ws_thread = None
+    if "ws_connected" not in st.session_state:
+        st.session_state.ws_connected = False
+    if "message_queue" not in st.session_state:
+        st.session_state.message_queue = queue.Queue()
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "message_history" not in st.session_state:
+        st.session_state.message_history = []
+    if "listening" not in st.session_state:
+        st.session_state.listening = False
+
+    if st.button("Restart Connection"):
+        st.session_state.ws_thread = None
+        st.session_state.ws_connected = False
+        st.session_state.message_queue = queue.Queue()
+        st.session_state.messages = []
+        st.session_state.message_history = []
+        st.session_state.listening = False
+        st.rerun()
+
+    if st.session_state.ws_connected:
+        st.write("WebSocket connected. Say trigger word to start.")
+        if st.session_state.listening:
+            st.write("Currently listening...")
+        else:
+            st.write("Not currently listening.")
+
+        # Display messages
+        for msg in st.session_state.message_history:
+            st.write(msg)
+
+        # Placeholder for other UI elements
+        st.subheader("Other UI Elements")
+        st.button("Start Listening")
+        st.button("Stop Listening")
+        st.button("Clear History")
+
+    else:
+        st.write("WebSocket not connected. Please click 'Restart Connection' to establish a connection.")
+        st.subheader("Connection Status")
+        st.write(f"Connected: {st.session_state.ws_connected}")
+        st.write(f"Thread: {st.session_state.ws_thread is not None}")
+
+if __name__ == "__main__":
+    main()
