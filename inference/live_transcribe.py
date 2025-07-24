@@ -6,6 +6,7 @@ import time
 import json
 import difflib
 import queue
+import pyttsx3
 from vosk import Model, KaldiRecognizer
 
 # === Load Command Data ===
@@ -15,10 +16,10 @@ with open(commands_path, "r") as f:
     COMMANDS = json.load(f)
 
 # === Whisper ASR Model ===
-whisper_model = whisper.load_model("medium")
+whisper_model = whisper.load_model("base")  # Use base for speed during testing
 
 # === Vosk Trigger Word Detection Setup ===
-vosk_model_path = os.path.join(base_dir, "models", "vosk")  # e.g., models/vosk/
+vosk_model_path = os.path.join(base_dir, "models", "vosk")
 vosk_model = Model(vosk_model_path)
 TRIGGER_WORDS = ["system"]
 TRIGGER_RECOGNIZER = KaldiRecognizer(vosk_model, 16000)
@@ -32,6 +33,13 @@ CHUNK = 1024
 RECORD_SECONDS = 5
 
 audio_interface = pyaudio.PyAudio()
+
+# === Text-to-Speech ===
+tts_engine = pyttsx3.init()
+def speak(text):
+    print(f"🔈 Speaking: {text}")
+    tts_engine.say(text)
+    tts_engine.runAndWait()
 
 # === Record Short Snippet for Whisper ===
 def record_temp_audio(filename="temp_stream.wav", duration=RECORD_SECONDS):
@@ -58,17 +66,21 @@ def match_command(text):
 
 # === Confirm Command (Confirm / Cancel) ===
 def confirm_action():
+    speak("Say confirm or cancel.")
     print("🗣️ Say 'Confirm' or 'Cancel'")
     file = record_temp_audio("confirm.wav", duration=3)
-    result = whisper_model.transcribe(file)
-    confirm_text = result["text"].strip().lower()
-    print(f"🔊 You said: {confirm_text}")
-    if "confirm" in confirm_text:
-        return True
-    elif "cancel" in confirm_text or "abort" in confirm_text:
-        return False
+    try:
+        result = whisper_model.transcribe(file)
+        confirm_text = result.get("text", "").strip().lower()
+        print(f"🔊 You said: {confirm_text}")
+        if "confirm" in confirm_text:
+            return True
+        elif "cancel" in confirm_text or "abort" in confirm_text:
+            return False
+    except Exception as e:
+        print(f"❌ Confirmation transcription failed: {e}")
     return None
-
+    
 # === Trigger Word Detection ===
 def listen_for_trigger():
     stream = audio_interface.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
@@ -91,22 +103,36 @@ def main_loop():
         while True:
             listen_for_trigger()
             audio_file = record_temp_audio()
-            result = whisper_model.transcribe(audio_file)
-            text = result["text"].strip()
-            print(f"📜 Transcript: {text}")
+            try:
+                result = whisper_model.transcribe(audio_file)
+                text = result.get("text", "").strip()
+            except Exception as e:
+                print(f"❌ Transcription failed: {e}")
+                continue
 
+            print(f"📜 Transcript: {text}")
             command = match_command(text)
             if command:
-                print(f"🤖 AI: You said '{command}'. Confirm?")
+                prompt = f"You said {command}. Confirm?"
+                print(f"🤖 AI: {prompt}")
+                speak(prompt)
                 decision = confirm_action()
                 if decision is True:
-                    print(f"✅ Command executed: {command}")
+                    msg = f"✅ Command executed: {command}"
+                    print(msg)
+                    speak(msg)
                 elif decision is False:
-                    print(f"❌ Command aborted.")
+                    msg = f"❌ Command aborted."
+                    print(msg)
+                    speak(msg)
                 else:
-                    print(f"⚠️ No decision made. Ignoring.")
+                    msg = f"⚠️ No decision made. Ignoring."
+                    print(msg)
+                    speak(msg)
             else:
-                print("🚫 Not a valid cockpit command.")
+                msg = "🚫 Not a valid cockpit command."
+                print(msg)
+                speak(msg)
             print("-" * 40)
 
     except KeyboardInterrupt:

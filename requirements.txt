@@ -1,20 +1,36 @@
-# Whisper ASR
+# ASR Model: Whisper
 git+https://github.com/openai/whisper.git
 
-# Torch backend (required for Whisper)
+# Torch backend (required by Whisper)
 torch
 
 # Audio preprocessing
 ffmpeg-python
-
-# Evaluation metrics (optional but recommended)
-jiwer
-
-# Utilities
+soundfile
 numpy
 
-# Trigger word detection with Vosk
+# Evaluation metrics
+jiwer
+
+# FastAPI Web Backend
+fastapi
+uvicorn
+python-multipart
+
+# Trigger Word Detection with Vosk
 vosk
 sounddevice
 
+# CORS support
+aiofiles
+
+pyttsx3
+pyaudio
+
+streamlit 
+requests
+
+websocket-client
+
+webrtcvad
 
