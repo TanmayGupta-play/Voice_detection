@@ -13,6 +13,7 @@ import difflib
 import wave
 import time
 import asyncio
+import string
 
 # Load commands
 base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -100,10 +101,9 @@ async def main_loop_websocket(websocket):
                         await websocket.send_text("Trigger word detected. Please say your command.")
                         frames = []
                         silence_count = 0
-                        # Clear the audio queue
                         while not audio_queue.empty():
                             audio_queue.get()
-                        await asyncio.sleep(1.0)
+                        await asyncio.sleep(0.5)
                         continue
 
                     if triggered:
@@ -115,55 +115,46 @@ async def main_loop_websocket(websocket):
                             if command:
                                 pending_command = command
                                 awaiting_confirmation = True
-                                collecting_confirmation = True
-                                confirmation_frames = []
-                                confirmation_silence_count = 0
                                 await websocket.send_text("Command matched. Are you sure? Say confirm or cancel.")
-                                await asyncio.sleep(0.5)
-                                continue
                             else:
                                 await websocket.send_text("No command found. Exiting. Say trigger word again.")
                             triggered = False
                             frames = []
             else:
-                # Confirmation collection
-                if collecting_confirmation:
+                # Robust confirmation loop: up to 2 attempts
+                for attempt in range(2):
+                    if attempt > 0:
+                        await websocket.send_text("Did not understand. Please say confirm or cancel.")
+                    await asyncio.sleep(2)  # Increased delay to ensure prompt is finished
+                    while not audio_queue.empty():
+                        audio_queue.get()  # Clear the audio queue after the delay
                     confirmation_frames = []
                     start_time = time.time()
-                    duration = 3  # seconds
-
+                    duration = 3.5  # seconds
                     while time.time() - start_time < duration:
                         if not audio_queue.empty():
                             audio_data = audio_queue.get()
                             confirmation_frames.append(audio_data)
                         else:
                             await asyncio.sleep(0.01)
-
-                    collecting_confirmation = False
                     await websocket.send_text(f"Confirmation frames collected: {len(confirmation_frames)}")
                     transcript = transcribe_whisper(confirmation_frames)
                     await websocket.send_text(f"Transcript: {transcript}")
-                    if "confirm" in transcript.lower():
+                    words = transcript.lower().strip().split()
+                    if words and words[-1].strip(string.punctuation) == "confirm":
                         await websocket.send_text("Command confirmed. Executing command.")
                         awaiting_confirmation = False
                         pending_command = None
-                        confirmation_attempts = 0
-                    elif "cancel" in transcript.lower():
+                        break
+                    elif words and words[-1].strip(string.punctuation) == "cancel":
                         await websocket.send_text("Command cancelled. Say trigger word again.")
                         awaiting_confirmation = False
                         pending_command = None
-                        confirmation_attempts = 0
-                    else:
-                        confirmation_attempts += 1
-                        if confirmation_attempts >= 2:
-                            await websocket.send_text("No response detected. Exiting. Say trigger word again.")
-                            awaiting_confirmation = False
-                            pending_command = None
-                            confirmation_attempts = 0
-                        else:
-                            await websocket.send_text("Did not understand. Please say confirm or cancel.")
-                    confirmation_silence_count = 0
-                    confirmation_frames = []
+                        break
+                else:
+                    await websocket.send_text("No response detected. Exiting. Say trigger word again.")
+                    awaiting_confirmation = False
+                    pending_command = None
     except Exception as e:
         await websocket.send_text(f"Error: {str(e)}")
         stream.stop_stream()
